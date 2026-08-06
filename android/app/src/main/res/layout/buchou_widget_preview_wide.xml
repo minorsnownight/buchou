@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/widget_card_background"
+    android:gravity="center_vertical"
     android:orientation="vertical"
     android:padding="20dp">
 
@@ -11,55 +13,53 @@
         android:layout_height="wrap_content"
         android:fontFamily="serif"
         android:text="@string/widget_wordmark"
-        android:textColor="@color/widget_text_secondary"
+        android:textColor="@color/widget_time"
         android:textSize="17sp"
         android:textStyle="italic" />
-
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="12dp" />
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:baselineAligned="true"
+        android:layout_marginTop="12dp"
         android:gravity="bottom"
         android:orientation="horizontal">
 
         <TextView
+            android:id="@+id/widget_days"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:fontFamily="sans-serif-light"
             android:text="@string/widget_preview_days"
-            android:textColor="@color/widget_text"
-            android:textSize="36sp"
-            android:textStyle="bold" />
+            android:textColor="@color/widget_time"
+            android:textSize="36sp" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginStart="2dp"
+            android:layout_marginBottom="3dp"
+            android:fontFamily="sans-serif-light"
             android:text="@string/widget_preview_day_unit"
-            android:textColor="@color/widget_text_secondary"
+            android:textColor="@color/widget_time"
             android:textSize="17sp" />
 
-        <View
-            android:layout_width="7dp"
-            android:layout_height="1dp" />
-
         <TextView
+            android:id="@+id/widget_time"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginStart="7dp"
+            android:layout_marginBottom="4dp"
+            android:fontFamily="sans-serif-light"
             android:text="@string/widget_preview_time"
-            android:textColor="@color/widget_text_secondary"
+            android:textColor="@color/widget_time"
             android:textSize="18sp" />
 
-        <Space
-            android:layout_width="0dp"
-            android:layout_height="1dp"
-            android:layout_weight="1" />
-
         <TextView
-            android:layout_width="wrap_content"
+            android:id="@+id/widget_status"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="end"
             android:text="@string/widget_status_smoke_free"
             android:textColor="@color/widget_smoke_free"
             android:textSize="15sp"

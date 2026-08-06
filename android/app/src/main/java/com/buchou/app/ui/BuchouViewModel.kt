@@ -15,7 +15,6 @@ import com.buchou.app.data.BuchouData
 import com.buchou.app.sync.SyncManager
 import com.buchou.app.sync.SyncPreferences
 import com.buchou.app.sync.SyncState
-import com.buchou.app.widget.WidgetUpdater
 import android.app.Application
 import com.buchou.app.sync.WebDavConfig
 import com.buchou.app.data.BuchouRepository
@@ -46,7 +45,6 @@ class BuchouViewModel(
     private val languagePreferences: LanguagePreferences,
     private val syncManager: SyncManager,
     private val syncPreferences: SyncPreferences,
-    private val appContext: android.content.Context,
 ) : ViewModel() {
     init {
         viewModelScope.launch {
@@ -98,7 +96,6 @@ class BuchouViewModel(
         viewModelScope.launch {
             repository.markSmokeFree(cravingIntensity = cravingIntensity)
             alarmScheduler.skipToday()
-            WidgetUpdater.updateAll(appContext)
         }
     }
 
@@ -109,7 +106,6 @@ class BuchouViewModel(
                 cravingIntensity = cravingIntensity,
             )
             alarmScheduler.skipToday()
-            WidgetUpdater.updateAll(appContext)
         }
     }
 
@@ -229,7 +225,7 @@ class BuchouViewModel(
             syncPreferences: SyncPreferences,
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
-                BuchouViewModel(repository, reminderPreferences, alarmScheduler, homeModulePreferences, themePreferences, currencyPreferences, languagePreferences, syncManager, syncPreferences, application)
+                BuchouViewModel(repository, reminderPreferences, alarmScheduler, homeModulePreferences, themePreferences, currencyPreferences, languagePreferences, syncManager, syncPreferences)
             }
         }
     }

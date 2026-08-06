@@ -1,42 +1,13 @@
 package com.buchou.app.widget
 
-import android.app.AlarmManager
 import android.app.PendingIntent
-import android.content.BroadcastReceiver
+import android.appwidget.AppWidgetManager
+import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.os.SystemClock
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.glance.GlanceId
-import androidx.glance.GlanceModifier
-import androidx.glance.action.actionStartActivity
-import androidx.glance.action.clickable
-import androidx.glance.appwidget.GlanceAppWidget
-import androidx.glance.appwidget.GlanceAppWidgetReceiver
-import androidx.glance.appwidget.SizeMode
-import androidx.glance.appwidget.cornerRadius
-import androidx.glance.appwidget.provideContent
-import androidx.glance.appwidget.updateAll
-import androidx.glance.background
-import androidx.glance.layout.Alignment
-import androidx.glance.layout.Column
-import androidx.glance.layout.Row
-import androidx.glance.layout.Spacer
-import androidx.glance.layout.fillMaxSize
-import androidx.glance.layout.fillMaxWidth
-import androidx.glance.layout.height
-import androidx.glance.layout.padding
-import androidx.glance.layout.width
-import androidx.glance.text.FontFamily
-import androidx.glance.text.FontStyle
-import androidx.glance.text.FontWeight
-import androidx.glance.text.Text
-import androidx.glance.text.TextStyle
-import androidx.glance.unit.ColorProvider
+import android.widget.RemoteViews
+import androidx.core.content.ContextCompat
 import com.buchou.app.BuchouApplication
 import com.buchou.app.MainActivity
 import com.buchou.app.R
@@ -49,21 +20,12 @@ import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 
-private object WidgetTokens {
-    val surface = ColorProvider(Color(0xFFFCFBF8))
-    val time = ColorProvider(Color(0xFF3F6B50))
-    val smokeFree = time
-    val smoked = ColorProvider(Color(0xFFA24C43))
-    val unrecorded = ColorProvider(Color(0xFF929792))
-    val cardRadius = 24.dp
-}
-
 private data class WidgetData(
     val days: Long,
     val hours: Long,
     val minutes: Long,
     val statusText: String,
-    val statusColor: ColorProvider,
+    val statusColor: Int,
 )
 
 private suspend fun loadWidgetData(context: Context): WidgetData {
@@ -73,267 +35,95 @@ private suspend fun loadWidgetData(context: Context): WidgetData {
         Duration.between(Instant.ofEpochMilli(startedAt), Instant.now())
     } ?: Duration.ZERO
 
-    val status = when (data.statusForDate(LocalDate.now())) {
-        DailyStatus.SMOKE_FREE -> context.getString(R.string.widget_status_smoke_free) to WidgetTokens.smokeFree
-        DailyStatus.SMOKED -> context.getString(R.string.widget_status_smoked) to WidgetTokens.smoked
-        DailyStatus.UNRECORDED -> context.getString(R.string.widget_status_not_checked_in) to WidgetTokens.unrecorded
+    val res = context.resources
+    val (statusText, statusColor) = when (data.statusForDate(LocalDate.now())) {
+        DailyStatus.SMOKE_FREE -> res.getString(R.string.widget_status_smoke_free) to ContextCompat.getColor(context, R.color.widget_smoke_free)
+        DailyStatus.SMOKED -> res.getString(R.string.widget_status_smoked) to ContextCompat.getColor(context, R.color.widget_smoked)
+        DailyStatus.UNRECORDED -> res.getString(R.string.widget_status_not_checked_in) to ContextCompat.getColor(context, R.color.widget_unrecorded)
     }
 
     return WidgetData(
         days = duration.toDays().coerceAtLeast(0),
         hours = (duration.toHours() % 24).coerceAtLeast(0),
         minutes = (duration.toMinutes() % 60).coerceAtLeast(0),
-        statusText = status.first,
-        statusColor = status.second,
+        statusText = statusText,
+        statusColor = statusColor,
     )
 }
 
-private fun GlanceModifier.widgetCard() = fillMaxSize()
-    .background(WidgetTokens.surface)
-    .cornerRadius(WidgetTokens.cardRadius)
-    .clickable(actionStartActivity<MainActivity>())
-
-private fun brandStyle(size: Int) = TextStyle(
-    fontSize = size.sp,
-    fontStyle = FontStyle.Italic,
-    fontFamily = FontFamily.Serif,
-    color = WidgetTokens.time,
-)
-
-private fun timeNumberStyle(size: Int) = TextStyle(
-    fontSize = size.sp,
-    fontFamily = FontFamily.Serif,
-    color = WidgetTokens.time,
-)
-
-private fun timeUnitStyle(size: Int) = TextStyle(
-    fontSize = size.sp,
-    fontFamily = FontFamily.Serif,
-    color = WidgetTokens.time,
-)
-
-@Composable
-private fun DayMetric(
-    data: WidgetData,
-    numberSize: Int,
+/**
+ * 推送一个 widget 实例的 RemoteViews。同步执行，不经过 JobScheduler/WorkManager，
+ * 前台调用立即生效，不受厂商后台冻结影响。
+ */
+private suspend fun pushWidget(
+    context: Context,
+    appWidgetManager: AppWidgetManager,
+    appWidgetId: Int,
+    layoutRes: Int,
 ) {
-    Row(verticalAlignment = Alignment.Bottom) {
-        Text(data.days.toString(), style = timeNumberStyle(numberSize))
-        Spacer(GlanceModifier.width(2.dp))
-        Text("d", style = timeUnitStyle((numberSize * 0.42f).toInt()))
+    val data = loadWidgetData(context)
+    android.util.Log.i("BuchouWidget", "pushWidget id=$appWidgetId days=${data.days} status=${data.statusText}")
+    val views = RemoteViews(context.packageName, layoutRes).apply {
+        setTextViewText(R.id.widget_days, data.days.toString())
+        setTextViewText(R.id.widget_time, "${data.hours}h ${data.minutes}m")
+        setTextViewText(R.id.widget_status, data.statusText)
+        setTextColor(R.id.widget_status, data.statusColor)
+        setOnClickPendingIntent(
+            R.id.widget_root,
+            PendingIntent.getActivity(
+                context,
+                appWidgetId,
+                Intent(context, MainActivity::class.java),
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+            ),
+        )
     }
+    appWidgetManager.updateAppWidget(appWidgetId, views)
 }
 
-@Composable
-private fun ClockMetric(
-    data: WidgetData,
-    numberSize: Int,
-) {
-    val unitSize = (numberSize * 0.58f).toInt()
-    Row(verticalAlignment = Alignment.Bottom) {
-        Text(data.hours.toString(), style = timeNumberStyle(numberSize))
-        Spacer(GlanceModifier.width(1.dp))
-        Text("h", style = timeUnitStyle(unitSize))
-        Spacer(GlanceModifier.width(5.dp))
-        Text(data.minutes.toString(), style = timeNumberStyle(numberSize))
-        Spacer(GlanceModifier.width(1.dp))
-        Text("m", style = timeUnitStyle(unitSize))
-    }
-}
-
-@Composable
-private fun StatusText(data: WidgetData, size: Int) {
-    Text(
-        text = data.statusText,
-        style = TextStyle(
-            fontSize = size.sp,
-            fontWeight = FontWeight.Medium,
-            color = data.statusColor,
-        ),
-    )
-}
-
-class BuchouWidgetWide : GlanceAppWidget() {
-    override val sizeMode = SizeMode.Single
-
-    override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val data = loadWidgetData(context)
-        provideContent {
-            Column(
-                modifier = GlanceModifier.widgetCard().padding(18.dp),
-                horizontalAlignment = Alignment.Start,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(text = "buchou", style = brandStyle(20))
-                Spacer(GlanceModifier.height(8.dp))
-                Row(
-                    modifier = GlanceModifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.Bottom,
-                ) {
-                    Row(verticalAlignment = Alignment.Bottom) {
-                        DayMetric(data, numberSize = 40)
-                        Spacer(GlanceModifier.width(8.dp))
-                        ClockMetric(data, numberSize = 18)
-                    }
-                    Spacer(GlanceModifier.defaultWeight())
-                    StatusText(data, size = 18)
-                }
-            }
-        }
-    }
-}
-
-class BuchouWidgetCompact : GlanceAppWidget() {
-    override val sizeMode = SizeMode.Single
-
-    override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val data = loadWidgetData(context)
-        provideContent {
-            Row(
-                modifier = GlanceModifier.widgetCard().padding(horizontal = 14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(text = "buchou", style = brandStyle(14))
-                Spacer(GlanceModifier.width(9.dp))
-                DayMetric(data, numberSize = 28)
-                Spacer(GlanceModifier.width(6.dp))
-                ClockMetric(data, numberSize = 12)
-                Spacer(GlanceModifier.defaultWeight())
-                StatusText(data, size = 12)
-            }
-        }
-    }
-}
-
-class BuchouWidgetTall : GlanceAppWidget() {
-    override val sizeMode = SizeMode.Single
-
-    override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val data = loadWidgetData(context)
-        provideContent {
-            Column(
-                modifier = GlanceModifier.widgetCard().padding(18.dp),
-                horizontalAlignment = Alignment.Start,
-            ) {
-                Text(text = "buchou", style = brandStyle(26))
-                Spacer(GlanceModifier.height(20.dp))
-                DayMetric(data, numberSize = 50)
-                Spacer(GlanceModifier.height(4.dp))
-                ClockMetric(data, numberSize = 18)
-                Spacer(GlanceModifier.defaultWeight())
-                StatusText(data, size = 16)
-            }
-        }
-    }
-}
-
-class BuchouWidgetWideReceiver : GlanceAppWidgetReceiver() {
-    override val glanceAppWidget = BuchouWidgetWide()
-
-    override fun onEnabled(context: Context) {
-        super.onEnabled(context)
-        WidgetTickReceiver.schedule(context)
-    }
-
-    override fun onDisabled(context: Context) {
-        super.onDisabled(context)
-        WidgetTickReceiver.cancelIfUnused(context)
-    }
-}
-
-class BuchouWidgetCompactReceiver : GlanceAppWidgetReceiver() {
-    override val glanceAppWidget = BuchouWidgetCompact()
-
-    override fun onEnabled(context: Context) {
-        super.onEnabled(context)
-        WidgetTickReceiver.schedule(context)
-    }
-
-    override fun onDisabled(context: Context) {
-        super.onDisabled(context)
-        WidgetTickReceiver.cancelIfUnused(context)
-    }
-}
-
-class BuchouWidgetTallReceiver : GlanceAppWidgetReceiver() {
-    override val glanceAppWidget = BuchouWidgetTall()
-
-    override fun onEnabled(context: Context) {
-        super.onEnabled(context)
-        WidgetTickReceiver.schedule(context)
-    }
-
-    override fun onDisabled(context: Context) {
-        super.onDisabled(context)
-        WidgetTickReceiver.cancelIfUnused(context)
-    }
-}
-
-object WidgetUpdater {
-    suspend fun updateAll(context: Context) {
-        BuchouWidgetWide().updateAll(context)
-        BuchouWidgetCompact().updateAll(context)
-        BuchouWidgetTall().updateAll(context)
-    }
-}
-
-class WidgetTickReceiver : BroadcastReceiver() {
-    override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action != ACTION_WIDGET_TICK) return
-
+abstract class BuchouWidgetProvider(private val layoutRes: Int) : AppWidgetProvider() {
+    override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
+        android.util.Log.i("BuchouWidget", "onUpdate ${javaClass.simpleName} ids=${appWidgetIds.toList()} layoutRes=$layoutRes")
         val pendingResult = goAsync()
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             try {
-                WidgetUpdater.updateAll(context)
+                appWidgetIds.forEach { id ->
+                    pushWidget(context, appWidgetManager, id, layoutRes)
+                }
+            } catch (t: Throwable) {
+                android.util.Log.e("BuchouWidget", "onUpdate failed", t)
             } finally {
                 pendingResult.finish()
             }
         }
     }
+}
 
-    companion object {
-        private const val ACTION_WIDGET_TICK = "com.buchou.app.WIDGET_TICK"
-        private const val WIDGET_UPDATE_REQUEST_CODE = 10001
-        private const val INTERVAL_ONE_MINUTE = 60_000L
+class BuchouWidgetWideReceiver : BuchouWidgetProvider(R.layout.buchou_widget_preview_wide)
+class BuchouWidgetCompactReceiver : BuchouWidgetProvider(R.layout.buchou_widget_preview_compact)
+class BuchouWidgetTallReceiver : BuchouWidgetProvider(R.layout.buchou_widget_preview_tall)
 
-        fun schedule(context: Context) {
-            val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-            alarmManager.setInexactRepeating(
-                AlarmManager.ELAPSED_REALTIME,
-                SystemClock.elapsedRealtime() + INTERVAL_ONE_MINUTE,
-                INTERVAL_ONE_MINUTE,
-                pendingIntent(context),
-            )
-        }
+object WidgetUpdater {
+    private val providers = listOf(
+        BuchouWidgetWideReceiver::class.java,
+        BuchouWidgetCompactReceiver::class.java,
+        BuchouWidgetTallReceiver::class.java,
+    )
 
-        fun cancelIfUnused(context: Context) {
-            if (hasAnyWidget(context)) return
-            val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-            alarmManager.cancel(pendingIntent(context))
-        }
-
-        private fun hasAnyWidget(context: Context): Boolean {
-            val manager = android.appwidget.AppWidgetManager.getInstance(context)
-            val providers = listOf(
-                BuchouWidgetWideReceiver::class.java,
-                BuchouWidgetCompactReceiver::class.java,
-                BuchouWidgetTallReceiver::class.java,
-            )
-            return providers.any { receiver ->
-                manager.getAppWidgetIds(ComponentName(context, receiver)).isNotEmpty()
+    /**
+     * 同步刷新所有已添加的 widget 实例。供数据变化流、onResume 等前台路径调用。
+     */
+    suspend fun updateAll(context: Context) {
+        val app = context.applicationContext
+        val manager = AppWidgetManager.getInstance(app)
+        for (provider in providers) {
+            val ids = manager.getAppWidgetIds(ComponentName(app, provider))
+            val layoutRes = when (provider) {
+                BuchouWidgetWideReceiver::class.java -> R.layout.buchou_widget_preview_wide
+                BuchouWidgetCompactReceiver::class.java -> R.layout.buchou_widget_preview_compact
+                else -> R.layout.buchou_widget_preview_tall
             }
-        }
-
-        private fun pendingIntent(context: Context): PendingIntent {
-            val intent = Intent(context, WidgetTickReceiver::class.java).apply {
-                action = ACTION_WIDGET_TICK
-            }
-            return PendingIntent.getBroadcast(
-                context,
-                WIDGET_UPDATE_REQUEST_CODE,
-                intent,
-                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-            )
+            ids.forEach { id -> pushWidget(app, manager, id, layoutRes) }
         }
     }
 }

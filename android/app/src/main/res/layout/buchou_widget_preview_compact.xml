@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/widget_card_background"
-    android:baselineAligned="true"
     android:gravity="center_vertical"
     android:orientation="horizontal"
     android:paddingHorizontal="14dp">
@@ -11,52 +11,46 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:fontFamily="serif"
+        android:layout_marginEnd="10dp"
         android:text="@string/widget_wordmark"
-        android:textColor="@color/widget_text_secondary"
-        android:textSize="13sp"
-        android:textStyle="italic" />
-
-    <View
-        android:layout_width="10dp"
-        android:layout_height="1dp" />
+        android:textColor="@color/widget_time"
+        android:textSize="13sp" />
 
     <TextView
+        android:id="@+id/widget_days"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:fontFamily="sans-serif-light"
         android:text="@string/widget_preview_days"
-        android:textColor="@color/widget_text"
-        android:textSize="25sp"
-        android:textStyle="bold" />
+        android:textColor="@color/widget_time"
+        android:textSize="25sp" />
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginStart="2dp"
+        android:fontFamily="sans-serif-light"
         android:text="@string/widget_preview_day_unit"
-        android:textColor="@color/widget_text_secondary"
+        android:textColor="@color/widget_time"
         android:textSize="12sp" />
 
-    <View
-        android:layout_width="6dp"
-        android:layout_height="1dp" />
-
     <TextView
+        android:id="@+id/widget_time"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginStart="6dp"
+        android:fontFamily="sans-serif-light"
         android:text="@string/widget_preview_time"
-        android:textColor="@color/widget_text_secondary"
+        android:textColor="@color/widget_time"
         android:textSize="11sp" />
 
-    <Space
-        android:layout_width="0dp"
-        android:layout_height="1dp"
-        android:layout_weight="1" />
-
     <TextView
-        android:layout_width="wrap_content"
+        android:id="@+id/widget_status"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:gravity="end"
         android:text="@string/widget_status_smoke_free"
         android:textColor="@color/widget_smoke_free"
-        android:textSize="10sp"
-        android:textStyle="bold" />
+        android:textSize="10sp" />
 </LinearLayout>

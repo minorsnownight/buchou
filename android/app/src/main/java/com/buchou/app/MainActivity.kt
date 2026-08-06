@@ -35,6 +35,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        // 回前台时刷新时间快照；数据变化的推送由 Application 的流负责。
         MainScope().launch {
             WidgetUpdater.updateAll(this@MainActivity)
         }
