@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="launcher_background">#FFFFFF</color>
+    <color name="widget_background">#FCFBF8</color>
+    <color name="widget_text">#1C211E</color>
+    <color name="widget_text_secondary">#69706B</color>
+    <color name="widget_smoke_free">#3F6B50</color>
+    <color name="widget_smoked">#A24C43</color>
+    <color name="widget_unrecorded">#929792</color>
+</resources>

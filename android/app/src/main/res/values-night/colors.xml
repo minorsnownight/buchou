@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="widget_background">#19201C</color>
+    <color name="widget_text">#F0F3F0</color>
+    <color name="widget_text_secondary">#B5BDB7</color>
+    <color name="widget_smoke_free">#6B9E7F</color>
+    <color name="widget_smoked">#D96855</color>
+    <color name="widget_unrecorded">#B5BDB7</color>
+</resources>

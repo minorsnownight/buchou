@@ -1,0 +1,30 @@
+package com.buchou.app.ui.theme
+
+import androidx.compose.ui.graphics.Color
+
+val WarmWhite = Color(0xFFF6F5F1)
+val WarmSurface = Color(0xFFFCFBF8)
+val ElevatedSurface = Color(0xFFFFFFFF)
+val Ink = Color(0xFF1C211E)
+val MutedInk = Color(0xFF69706B)
+val Sage = Color(0xFF476455)
+val SageSoft = Color(0xFFDEE9E2)
+val SmokeFree = Color(0xFF3F6B50)
+val Smoked = Color(0xFFA24C43)
+val Unrecorded = Color(0xFF929792)
+val Divider = Color(0xFFE5E2DA)
+val OutlineStrong = Color(0xFF747C76)
+val AchievementGold = Color(0xFFD99B32)
+val AchievementCoral = Color(0xFFD96855)
+val AchievementBlue = Color(0xFF4F7FA3)
+val AchievementViolet = Color(0xFF7766A6)
+
+val Night = Color(0xFF111714)
+val NightSurface = Color(0xFF19201C)
+val NightElevatedSurface = Color(0xFF222A25)
+val NightText = Color(0xFFF0F3F0)
+val NightMuted = Color(0xFFB5BDB7)
+val NightSage = Color(0xFFA8C9B5)
+val NightSageContainer = Color(0xFF2A4034)
+val NightDivider = Color(0xFF354039)
+val NightOutlineStrong = Color(0xFF8E9992)
