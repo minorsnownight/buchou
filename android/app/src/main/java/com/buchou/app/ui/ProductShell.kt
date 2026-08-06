@@ -1118,7 +1118,7 @@ private fun ProductSettingsScreen(
             SettingsRow(stringResource(R.string.setting_currency), currencyCode, trailing = { Text("›", color = MaterialTheme.colorScheme.onSurfaceVariant) }, onClick = { dialog = SettingsDialog.Currency })
             SettingsRow(
                 stringResource(R.string.setting_about),
-                stringResource(R.string.about_version, "0.3.0-alpha10"),
+                stringResource(R.string.about_version, "0.4.0"),
                 trailing = { Text("›", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                 onClick = {
                     val intent = Intent(Intent.ACTION_VIEW, ABOUT_URL.toUri()).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)

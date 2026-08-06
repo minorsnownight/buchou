@@ -23,7 +23,6 @@ import androidx.glance.appwidget.provideContent
 import androidx.glance.appwidget.updateAll
 import androidx.glance.background
 import androidx.glance.layout.Alignment
-import androidx.glance.layout.Box
 import androidx.glance.layout.Column
 import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
@@ -45,7 +44,6 @@ import com.buchou.app.domain.model.DailyStatus
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.time.Duration
 import java.time.Instant
@@ -53,9 +51,8 @@ import java.time.LocalDate
 
 private object WidgetTokens {
     val surface = ColorProvider(Color(0xFFFCFBF8))
-    val primary = ColorProvider(Color(0xFF1C211E))
-    val secondary = ColorProvider(Color(0xFF69706B))
-    val smokeFree = ColorProvider(Color(0xFF3F6B50))
+    val time = ColorProvider(Color(0xFF3F6B50))
+    val smokeFree = time
     val smoked = ColorProvider(Color(0xFFA24C43))
     val unrecorded = ColorProvider(Color(0xFF929792))
     val cardRadius = 24.dp
@@ -71,7 +68,7 @@ private data class WidgetData(
 
 private suspend fun loadWidgetData(context: Context): WidgetData {
     val app = context.applicationContext as BuchouApplication
-    val data = app.repository.data.first()
+    val data = app.repository.widgetSnapshot()
     val duration = data.currentStreakStartedAtEpochMillis()?.let { startedAt ->
         Duration.between(Instant.ofEpochMilli(startedAt), Instant.now())
     } ?: Duration.ZERO
@@ -100,34 +97,47 @@ private fun brandStyle(size: Int) = TextStyle(
     fontSize = size.sp,
     fontStyle = FontStyle.Italic,
     fontFamily = FontFamily.Serif,
-    color = WidgetTokens.secondary,
+    color = WidgetTokens.time,
 )
 
-private fun primaryStyle(size: Int) = TextStyle(
+private fun timeNumberStyle(size: Int) = TextStyle(
     fontSize = size.sp,
-    fontWeight = FontWeight.Bold,
-    color = WidgetTokens.primary,
+    fontFamily = FontFamily.Serif,
+    color = WidgetTokens.time,
 )
 
-private fun secondaryStyle(size: Int) = TextStyle(
+private fun timeUnitStyle(size: Int) = TextStyle(
     fontSize = size.sp,
-    color = WidgetTokens.secondary,
+    fontFamily = FontFamily.Serif,
+    color = WidgetTokens.time,
 )
-
-private fun timeText(context: Context, data: WidgetData) = "${data.hours}${context.getString(R.string.hour_unit_short)} ${data.minutes}${context.getString(R.string.minute_unit_short)}"
 
 @Composable
-private fun TimeDisplay(
-    context: Context,
+private fun DayMetric(
     data: WidgetData,
-    daySize: Int,
-    timeSize: Int,
+    numberSize: Int,
 ) {
     Row(verticalAlignment = Alignment.Bottom) {
-        Text(data.days.toString(), style = primaryStyle(daySize))
-        Text(context.getString(R.string.day_unit_short), style = secondaryStyle((daySize * 0.46f).toInt()))
-        Spacer(GlanceModifier.width(7.dp))
-        Text(timeText(context, data), style = secondaryStyle(timeSize))
+        Text(data.days.toString(), style = timeNumberStyle(numberSize))
+        Spacer(GlanceModifier.width(2.dp))
+        Text("d", style = timeUnitStyle((numberSize * 0.42f).toInt()))
+    }
+}
+
+@Composable
+private fun ClockMetric(
+    data: WidgetData,
+    numberSize: Int,
+) {
+    val unitSize = (numberSize * 0.58f).toInt()
+    Row(verticalAlignment = Alignment.Bottom) {
+        Text(data.hours.toString(), style = timeNumberStyle(numberSize))
+        Spacer(GlanceModifier.width(1.dp))
+        Text("h", style = timeUnitStyle(unitSize))
+        Spacer(GlanceModifier.width(5.dp))
+        Text(data.minutes.toString(), style = timeNumberStyle(numberSize))
+        Spacer(GlanceModifier.width(1.dp))
+        Text("m", style = timeUnitStyle(unitSize))
     }
 }
 
@@ -150,18 +160,23 @@ class BuchouWidgetWide : GlanceAppWidget() {
         val data = loadWidgetData(context)
         provideContent {
             Column(
-                modifier = GlanceModifier.widgetCard().padding(20.dp),
+                modifier = GlanceModifier.widgetCard().padding(18.dp),
                 horizontalAlignment = Alignment.Start,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(text = "buchou", style = brandStyle(17))
-                Spacer(GlanceModifier.height(12.dp))
+                Text(text = "buchou", style = brandStyle(20))
+                Spacer(GlanceModifier.height(8.dp))
                 Row(
                     modifier = GlanceModifier.fillMaxWidth(),
                     verticalAlignment = Alignment.Bottom,
                 ) {
-                    TimeDisplay(context, data, daySize = 36, timeSize = 18)
+                    Row(verticalAlignment = Alignment.Bottom) {
+                        DayMetric(data, numberSize = 40)
+                        Spacer(GlanceModifier.width(8.dp))
+                        ClockMetric(data, numberSize = 18)
+                    }
                     Spacer(GlanceModifier.defaultWeight())
-                    StatusText(data, size = 15)
+                    StatusText(data, size = 18)
                 }
             }
         }
@@ -176,13 +191,15 @@ class BuchouWidgetCompact : GlanceAppWidget() {
         provideContent {
             Row(
                 modifier = GlanceModifier.widgetCard().padding(horizontal = 14.dp),
-                verticalAlignment = Alignment.Bottom,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(text = "buchou", style = brandStyle(13))
-                Spacer(GlanceModifier.width(10.dp))
-                TimeDisplay(context, data, daySize = 25, timeSize = 11)
+                Text(text = "buchou", style = brandStyle(14))
+                Spacer(GlanceModifier.width(9.dp))
+                DayMetric(data, numberSize = 28)
+                Spacer(GlanceModifier.width(6.dp))
+                ClockMetric(data, numberSize = 12)
                 Spacer(GlanceModifier.defaultWeight())
-                StatusText(data, size = 10)
+                StatusText(data, size = 12)
             }
         }
     }
@@ -198,11 +215,13 @@ class BuchouWidgetTall : GlanceAppWidget() {
                 modifier = GlanceModifier.widgetCard().padding(18.dp),
                 horizontalAlignment = Alignment.Start,
             ) {
-                Text(text = "buchou", style = brandStyle(21))
-                Spacer(GlanceModifier.height(30.dp))
-                TimeDisplay(context, data, daySize = 48, timeSize = 18)
+                Text(text = "buchou", style = brandStyle(26))
+                Spacer(GlanceModifier.height(20.dp))
+                DayMetric(data, numberSize = 50)
+                Spacer(GlanceModifier.height(4.dp))
+                ClockMetric(data, numberSize = 18)
                 Spacer(GlanceModifier.defaultWeight())
-                StatusText(data, size = 15)
+                StatusText(data, size = 16)
             }
         }
     }

@@ -131,6 +131,15 @@ class BuchouRepository(
         )
     }
 
+    suspend fun widgetSnapshot(): BuchouData = BuchouData(
+        profile = dao.getProfile(),
+        journey = dao.getJourney(),
+        checkIns = dao.getAllCheckIns(),
+        smokingEvents = dao.getSmokingEvents(),
+        reasons = emptyList(),
+        achievementUnlocks = emptyList(),
+    )
+
     suspend fun initialize(
         quitStartedAt: Instant,
         cigarettesPerDay: Int,
