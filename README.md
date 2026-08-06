@@ -8,9 +8,9 @@
 
 <table>
   <tr>
-    <td valign="top"><img src="images/buchou.jpg" width="280" alt="不抽页"></td>
-    <td valign="top"><img src="images/records.jpg" width="280" alt="记录页"></td>
-    <td valign="top"><img src="images/settings.jpg" width="280" alt="设置页"></td>
+    <td valign="top"><img src="images/buchou_zh_light.jpg" width="280" alt="不抽页"></td>
+    <td valign="top"><img src="images/records_zh_light.jpg" width="280" alt="记录页"></td>
+    <td valign="top"><img src="images/settings_zh_light.jpg" width="280" alt="设置页"></td>
   </tr>
     <tr>
     <td valign="top"><img src="images/buchou_en_dark.jpg" width="280" alt="不抽页"></td>
