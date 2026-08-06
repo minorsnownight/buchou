@@ -188,5 +188,17 @@
     <string name="sync_configured">已配置</string>
     <string name="sync_not_configured">未配置</string>
     <string name="sync_success">同步成功</string>
-    <string name="widget_description">显示连续不抽天数和今日状态</string>
+    <string name="widget_wide_name">横向 · 4 × 2</string>
+    <string name="widget_compact_name">紧凑 · 4 × 1</string>
+    <string name="widget_tall_name">纵向 · 2 × 4</string>
+    <string name="widget_wide_description">横向显示连续不抽时间和今日状态</string>
+    <string name="widget_compact_description">紧凑显示连续不抽时间和今日状态</string>
+    <string name="widget_tall_description">纵向显示连续不抽时间和今日状态</string>
+    <string name="widget_status_not_checked_in">Not Checked In</string>
+    <string name="widget_status_smoked">Smoked</string>
+    <string name="widget_status_smoke_free">Smoke-free</string>
+    <string name="widget_wordmark" translatable="false">buchou</string>
+    <string name="widget_preview_days" translatable="false">128</string>
+    <string name="widget_preview_day_unit" translatable="false">d</string>
+    <string name="widget_preview_time" translatable="false">14 h 32 m</string>
 </resources>

@@ -19,6 +19,7 @@
     <string name="cigarettes_per_pack">Cigarettes per pack</string>
     <string name="price_per_pack">Price per pack</string>
     <string name="quit_reason">Reasons to quit</string>
+    <string name="quit_reason_intro">Shown in the reasons carousel on the Buchou page; blank items use the default reasons.</string>
     <string name="quit_reason_slot">Reason %1$d</string>
     <string name="quit_reason_hint">For example: I want to breathe more easily</string>
     <string name="start_button">Start tracking</string>
@@ -187,5 +188,13 @@
     <string name="sync_configured">Configured</string>
     <string name="sync_not_configured">Not configured</string>
     <string name="sync_success">Sync successful</string>
-    <string name="widget_description">Shows smoke-free days and today status</string>
+    <string name="widget_wide_name">Wide · 4 × 2</string>
+    <string name="widget_compact_name">Compact · 4 × 1</string>
+    <string name="widget_tall_name">Tall · 2 × 4</string>
+    <string name="widget_wide_description">Shows smoke-free time and today status in a wide layout</string>
+    <string name="widget_compact_description">Shows smoke-free time and today status in a compact layout</string>
+    <string name="widget_tall_description">Shows smoke-free time and today status in a tall layout</string>
+    <string name="widget_status_not_checked_in">Not Checked In</string>
+    <string name="widget_status_smoked">Smoked</string>
+    <string name="widget_status_smoke_free">Smoke-free</string>
 </resources>

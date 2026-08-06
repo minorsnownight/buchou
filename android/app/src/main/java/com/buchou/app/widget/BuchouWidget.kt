@@ -2,14 +2,17 @@ package com.buchou.app.widget
 
 import android.app.AlarmManager
 import android.app.PendingIntent
+import android.content.BroadcastReceiver
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.os.SystemClock
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
-import androidx.glance.GlanceTheme
 import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
@@ -25,9 +28,12 @@ import androidx.glance.layout.Column
 import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxSize
+import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
 import androidx.glance.layout.width
+import androidx.glance.text.FontFamily
+import androidx.glance.text.FontStyle
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
@@ -35,7 +41,7 @@ import androidx.glance.unit.ColorProvider
 import com.buchou.app.BuchouApplication
 import com.buchou.app.MainActivity
 import com.buchou.app.R
-
+import com.buchou.app.domain.model.DailyStatus
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -45,295 +51,204 @@ import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 
-// ── Shared data ──────────────────────────────────────────────
+private object WidgetTokens {
+    val surface = ColorProvider(Color(0xFFFCFBF8))
+    val primary = ColorProvider(Color(0xFF1C211E))
+    val secondary = ColorProvider(Color(0xFF69706B))
+    val smokeFree = ColorProvider(Color(0xFF3F6B50))
+    val smoked = ColorProvider(Color(0xFFA24C43))
+    val unrecorded = ColorProvider(Color(0xFF929792))
+    val cardRadius = 24.dp
+}
 
 private data class WidgetData(
     val days: Long,
     val hours: Long,
     val minutes: Long,
     val statusText: String,
-    val statusColorRes: Int,
+    val statusColor: ColorProvider,
 )
 
 private suspend fun loadWidgetData(context: Context): WidgetData {
     val app = context.applicationContext as BuchouApplication
     val data = app.repository.data.first()
-    val todayStatus = data.statusForDate(LocalDate.now())
-    val streakStart = data.currentStreakStartedAtEpochMillis()
-    val now = Instant.now()
-    val duration = streakStart?.let {
-        Duration.between(Instant.ofEpochMilli(it), now)
+    val duration = data.currentStreakStartedAtEpochMillis()?.let { startedAt ->
+        Duration.between(Instant.ofEpochMilli(startedAt), Instant.now())
     } ?: Duration.ZERO
 
-    val days = duration.toDays().coerceAtLeast(0)
-    val hours = (duration.toHours() % 24).coerceAtLeast(0)
-    val minutes = (duration.toMinutes() % 60).coerceAtLeast(0)
-
-    val (statusText, statusColorRes) = when (todayStatus) {
-        com.buchou.app.domain.model.DailyStatus.SMOKE_FREE ->
-            context.getString(R.string.btn_smoke_free) to R.color.widget_smoke_free
-        com.buchou.app.domain.model.DailyStatus.SMOKED ->
-            context.getString(R.string.btn_smoked) to R.color.widget_smoked
-        com.buchou.app.domain.model.DailyStatus.UNRECORDED ->
-            context.getString(R.string.not_checked_in) to R.color.widget_unrecorded
+    val status = when (data.statusForDate(LocalDate.now())) {
+        DailyStatus.SMOKE_FREE -> context.getString(R.string.widget_status_smoke_free) to WidgetTokens.smokeFree
+        DailyStatus.SMOKED -> context.getString(R.string.widget_status_smoked) to WidgetTokens.smoked
+        DailyStatus.UNRECORDED -> context.getString(R.string.widget_status_not_checked_in) to WidgetTokens.unrecorded
     }
 
-    return WidgetData(days, hours, minutes, statusText, statusColorRes)
+    return WidgetData(
+        days = duration.toDays().coerceAtLeast(0),
+        hours = (duration.toHours() % 24).coerceAtLeast(0),
+        minutes = (duration.toMinutes() % 60).coerceAtLeast(0),
+        statusText = status.first,
+        statusColor = status.second,
+    )
 }
 
-private fun buildTimeString(context: Context, hours: Long, minutes: Long): String {
-    val hourUnit = context.getString(R.string.hour_unit_short)
-    val minuteUnit = context.getString(R.string.minute_unit_short)
-    return "$hours$hourUnit$minutes$minuteUnit"
+private fun GlanceModifier.widgetCard() = fillMaxSize()
+    .background(WidgetTokens.surface)
+    .cornerRadius(WidgetTokens.cardRadius)
+    .clickable(actionStartActivity<MainActivity>())
+
+private fun brandStyle(size: Int) = TextStyle(
+    fontSize = size.sp,
+    fontStyle = FontStyle.Italic,
+    fontFamily = FontFamily.Serif,
+    color = WidgetTokens.secondary,
+)
+
+private fun primaryStyle(size: Int) = TextStyle(
+    fontSize = size.sp,
+    fontWeight = FontWeight.Bold,
+    color = WidgetTokens.primary,
+)
+
+private fun secondaryStyle(size: Int) = TextStyle(
+    fontSize = size.sp,
+    color = WidgetTokens.secondary,
+)
+
+private fun timeText(context: Context, data: WidgetData) = "${data.hours}${context.getString(R.string.hour_unit_short)} ${data.minutes}${context.getString(R.string.minute_unit_short)}"
+
+@Composable
+private fun TimeDisplay(
+    context: Context,
+    data: WidgetData,
+    daySize: Int,
+    timeSize: Int,
+) {
+    Row(verticalAlignment = Alignment.Bottom) {
+        Text(data.days.toString(), style = primaryStyle(daySize))
+        Text(context.getString(R.string.day_unit_short), style = secondaryStyle((daySize * 0.46f).toInt()))
+        Spacer(GlanceModifier.width(7.dp))
+        Text(timeText(context, data), style = secondaryStyle(timeSize))
+    }
 }
 
-// ── 4×2 Wide Widget ───────────────────────────────────────────
+@Composable
+private fun StatusText(data: WidgetData, size: Int) {
+    Text(
+        text = data.statusText,
+        style = TextStyle(
+            fontSize = size.sp,
+            fontWeight = FontWeight.Medium,
+            color = data.statusColor,
+        ),
+    )
+}
 
 class BuchouWidgetWide : GlanceAppWidget() {
     override val sizeMode = SizeMode.Single
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val wd = loadWidgetData(context)
-        val dayUnit = context.getString(R.string.day_unit_short)
-        val timeStr = buildTimeString(context, wd.hours, wd.minutes)
-        val statusColor = ColorProvider(wd.statusColorRes)
-
+        val data = loadWidgetData(context)
         provideContent {
-            GlanceTheme {
-                Box(
-                    modifier = GlanceModifier
-                        .fillMaxSize()
-                        .background(GlanceTheme.colors.surface)
-                        .cornerRadius(20.dp)
-                        .clickable(actionStartActivity<MainActivity>()),
-                    contentAlignment = Alignment.Center,
+            Column(
+                modifier = GlanceModifier.widgetCard().padding(20.dp),
+                horizontalAlignment = Alignment.Start,
+            ) {
+                Text(text = "buchou", style = brandStyle(17))
+                Spacer(GlanceModifier.height(12.dp))
+                Row(
+                    modifier = GlanceModifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.Bottom,
                 ) {
-                    Row(
-                        modifier = GlanceModifier
-                            .fillMaxSize()
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalAlignment = Alignment.Start,
-                    ) {
-                        Text(
-                            text = context.getString(R.string.app_name),
-                            style = TextStyle(
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = GlanceTheme.colors.onSurfaceVariant,
-                            ),
-                        )
-                        Spacer(GlanceModifier.width(12.dp))
-                        Text(
-                            text = wd.days.toString(),
-                            style = TextStyle(
-                                fontSize = 40.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = GlanceTheme.colors.onSurface,
-                            ),
-                        )
-                        Text(
-                            text = dayUnit,
-                            style = TextStyle(
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = GlanceTheme.colors.onSurfaceVariant,
-                            ),
-                        )
-                        Spacer(GlanceModifier.width(6.dp))
-                        Text(
-                            text = timeStr,
-                            style = TextStyle(
-                                fontSize = 14.sp,
-                                color = GlanceTheme.colors.onSurfaceVariant,
-                            ),
-                        )
-                        Spacer(GlanceModifier.width(12.dp))
-                        Text(
-                            text = wd.statusText,
-                            style = TextStyle(
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = statusColor,
-                            ),
-                        )
-                    }
+                    TimeDisplay(context, data, daySize = 36, timeSize = 18)
+                    Spacer(GlanceModifier.defaultWeight())
+                    StatusText(data, size = 15)
                 }
             }
         }
     }
 }
-
-// ── 4×1 Compact Widget ──────────────────────────────────────
 
 class BuchouWidgetCompact : GlanceAppWidget() {
     override val sizeMode = SizeMode.Single
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val wd = loadWidgetData(context)
-        val dayUnit = context.getString(R.string.day_unit_short)
-        val hourUnit = context.getString(R.string.hour_unit_short)
-        val minuteUnit = context.getString(R.string.minute_unit_short)
-        val statusColor = ColorProvider(wd.statusColorRes)
-
+        val data = loadWidgetData(context)
         provideContent {
-            GlanceTheme {
-                Box(
-                    modifier = GlanceModifier
-                        .fillMaxSize()
-                        .background(GlanceTheme.colors.surface)
-                        .cornerRadius(20.dp)
-                        .clickable(actionStartActivity<MainActivity>()),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Row(
-                        modifier = GlanceModifier
-                            .fillMaxSize()
-                            .padding(horizontal = 14.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text = context.getString(R.string.app_name),
-                            style = TextStyle(
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = GlanceTheme.colors.onSurfaceVariant,
-                            ),
-                        )
-                        Spacer(GlanceModifier.width(8.dp))
-                        Text(
-                            text = "${wd.days}$dayUnit",
-                            style = TextStyle(
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = GlanceTheme.colors.onSurface,
-                            ),
-                        )
-                        Spacer(GlanceModifier.width(4.dp))
-                        Text(
-                            text = "${wd.hours}$hourUnit${wd.minutes}$minuteUnit",
-                            style = TextStyle(
-                                fontSize = 12.sp,
-                                color = GlanceTheme.colors.onSurfaceVariant,
-                            ),
-                        )
-                        Spacer(GlanceModifier.width(8.dp))
-                        Text(
-                            text = wd.statusText,
-                            style = TextStyle(
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = statusColor,
-                            ),
-                        )
-                    }
-                }
+            Row(
+                modifier = GlanceModifier.widgetCard().padding(horizontal = 14.dp),
+                verticalAlignment = Alignment.Bottom,
+            ) {
+                Text(text = "buchou", style = brandStyle(13))
+                Spacer(GlanceModifier.width(10.dp))
+                TimeDisplay(context, data, daySize = 25, timeSize = 11)
+                Spacer(GlanceModifier.defaultWeight())
+                StatusText(data, size = 10)
             }
         }
     }
 }
-
-// ── 2×4 Tall Widget ──────────────────────────────────────────
 
 class BuchouWidgetTall : GlanceAppWidget() {
     override val sizeMode = SizeMode.Single
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val wd = loadWidgetData(context)
-        val dayUnit = context.getString(R.string.day_unit_short)
-        val hourUnit = context.getString(R.string.hour_unit_short)
-        val minuteUnit = context.getString(R.string.minute_unit_short)
-        val statusColor = ColorProvider(wd.statusColorRes)
-
+        val data = loadWidgetData(context)
         provideContent {
-            GlanceTheme {
-                Box(
-                    modifier = GlanceModifier
-                        .fillMaxSize()
-                        .background(GlanceTheme.colors.surface)
-                        .cornerRadius(20.dp)
-                        .clickable(actionStartActivity<MainActivity>()),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Column(
-                        modifier = GlanceModifier
-                            .fillMaxSize()
-                            .padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text = context.getString(R.string.app_name),
-                            style = TextStyle(
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = GlanceTheme.colors.onSurfaceVariant,
-                            ),
-                        )
-                        Spacer(GlanceModifier.height(16.dp))
-                        Text(
-                            text = wd.days.toString(),
-                            style = TextStyle(
-                                fontSize = 48.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = GlanceTheme.colors.onSurface,
-                            ),
-                        )
-                        Text(
-                            text = dayUnit,
-                            style = TextStyle(
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = GlanceTheme.colors.onSurfaceVariant,
-                            ),
-                        )
-                        Spacer(GlanceModifier.height(12.dp))
-                        Text(
-                            text = "${wd.hours}$hourUnit",
-                            style = TextStyle(
-                                fontSize = 14.sp,
-                                color = GlanceTheme.colors.onSurfaceVariant,
-                            ),
-                        )
-                        Spacer(GlanceModifier.height(2.dp))
-                        Text(
-                            text = "${wd.minutes}$minuteUnit",
-                            style = TextStyle(
-                                fontSize = 14.sp,
-                                color = GlanceTheme.colors.onSurfaceVariant,
-                            ),
-                        )
-                        Spacer(GlanceModifier.height(16.dp))
-                        Text(
-                            text = wd.statusText,
-                            style = TextStyle(
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = statusColor,
-                            ),
-                        )
-                    }
-                }
+            Column(
+                modifier = GlanceModifier.widgetCard().padding(18.dp),
+                horizontalAlignment = Alignment.Start,
+            ) {
+                Text(text = "buchou", style = brandStyle(21))
+                Spacer(GlanceModifier.height(30.dp))
+                TimeDisplay(context, data, daySize = 48, timeSize = 18)
+                Spacer(GlanceModifier.defaultWeight())
+                StatusText(data, size = 15)
             }
         }
     }
 }
 
-// ── Receivers ────────────────────────────────────────────────
-
 class BuchouWidgetWideReceiver : GlanceAppWidgetReceiver() {
     override val glanceAppWidget = BuchouWidgetWide()
+
+    override fun onEnabled(context: Context) {
+        super.onEnabled(context)
+        WidgetTickReceiver.schedule(context)
+    }
+
+    override fun onDisabled(context: Context) {
+        super.onDisabled(context)
+        WidgetTickReceiver.cancelIfUnused(context)
+    }
 }
 
 class BuchouWidgetCompactReceiver : GlanceAppWidgetReceiver() {
     override val glanceAppWidget = BuchouWidgetCompact()
+
+    override fun onEnabled(context: Context) {
+        super.onEnabled(context)
+        WidgetTickReceiver.schedule(context)
+    }
+
+    override fun onDisabled(context: Context) {
+        super.onDisabled(context)
+        WidgetTickReceiver.cancelIfUnused(context)
+    }
 }
 
 class BuchouWidgetTallReceiver : GlanceAppWidgetReceiver() {
     override val glanceAppWidget = BuchouWidgetTall()
-}
 
-// ── Unified updater + periodic refresh ───────────────────────
+    override fun onEnabled(context: Context) {
+        super.onEnabled(context)
+        WidgetTickReceiver.schedule(context)
+    }
+
+    override fun onDisabled(context: Context) {
+        super.onDisabled(context)
+        WidgetTickReceiver.cancelIfUnused(context)
+    }
+}
 
 object WidgetUpdater {
     suspend fun updateAll(context: Context) {
@@ -343,29 +258,16 @@ object WidgetUpdater {
     }
 }
 
-class WidgetTickReceiver : GlanceAppWidgetReceiver() {
-    override val glanceAppWidget = BuchouWidgetWide() // unused but required
-
-    override fun onEnabled(context: Context) {
-        super.onEnabled(context)
-        scheduleWidgetUpdates(context)
-    }
-
-    override fun onDisabled(context: Context) {
-        super.onDisabled(context)
-        cancelWidgetUpdates(context)
-    }
-
+class WidgetTickReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        super.onReceive(context, intent)
-        if (intent.action == ACTION_WIDGET_TICK) {
-            val pendingResult = goAsync()
-            CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
-                try {
-                    WidgetUpdater.updateAll(context)
-                } finally {
-                    pendingResult.finish()
-                }
+        if (intent.action != ACTION_WIDGET_TICK) return
+
+        val pendingResult = goAsync()
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            try {
+                WidgetUpdater.updateAll(context)
+            } finally {
+                pendingResult.finish()
             }
         }
     }
@@ -375,37 +277,44 @@ class WidgetTickReceiver : GlanceAppWidgetReceiver() {
         private const val WIDGET_UPDATE_REQUEST_CODE = 10001
         private const val INTERVAL_ONE_MINUTE = 60_000L
 
-        fun scheduleWidgetUpdates(context: Context) {
+        fun schedule(context: Context) {
             val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-            val intent = Intent(context, WidgetTickReceiver::class.java).apply {
-                action = ACTION_WIDGET_TICK
-            }
-            val pendingIntent = PendingIntent.getBroadcast(
-                context,
-                WIDGET_UPDATE_REQUEST_CODE,
-                intent,
-                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-            )
             alarmManager.setInexactRepeating(
                 AlarmManager.ELAPSED_REALTIME,
                 SystemClock.elapsedRealtime() + INTERVAL_ONE_MINUTE,
                 INTERVAL_ONE_MINUTE,
-                pendingIntent,
+                pendingIntent(context),
             )
         }
 
-        fun cancelWidgetUpdates(context: Context) {
+        fun cancelIfUnused(context: Context) {
+            if (hasAnyWidget(context)) return
             val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+            alarmManager.cancel(pendingIntent(context))
+        }
+
+        private fun hasAnyWidget(context: Context): Boolean {
+            val manager = android.appwidget.AppWidgetManager.getInstance(context)
+            val providers = listOf(
+                BuchouWidgetWideReceiver::class.java,
+                BuchouWidgetCompactReceiver::class.java,
+                BuchouWidgetTallReceiver::class.java,
+            )
+            return providers.any { receiver ->
+                manager.getAppWidgetIds(ComponentName(context, receiver)).isNotEmpty()
+            }
+        }
+
+        private fun pendingIntent(context: Context): PendingIntent {
             val intent = Intent(context, WidgetTickReceiver::class.java).apply {
                 action = ACTION_WIDGET_TICK
             }
-            val pendingIntent = PendingIntent.getBroadcast(
+            return PendingIntent.getBroadcast(
                 context,
                 WIDGET_UPDATE_REQUEST_CODE,
                 intent,
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
             )
-            alarmManager.cancel(pendingIntent)
         }
     }
 }

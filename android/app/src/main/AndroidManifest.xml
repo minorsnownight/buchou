@@ -56,7 +56,8 @@
         </receiver>
         <receiver
             android:name=".widget.BuchouWidgetWideReceiver"
-            android:exported="false">
+            android:exported="true"
+            android:label="@string/widget_wide_name">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
@@ -66,7 +67,8 @@
         </receiver>
         <receiver
             android:name=".widget.BuchouWidgetCompactReceiver"
-            android:exported="false">
+            android:exported="true"
+            android:label="@string/widget_compact_name">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
@@ -76,7 +78,8 @@
         </receiver>
         <receiver
             android:name=".widget.BuchouWidgetTallReceiver"
-            android:exported="false">
+            android:exported="true"
+            android:label="@string/widget_tall_name">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
