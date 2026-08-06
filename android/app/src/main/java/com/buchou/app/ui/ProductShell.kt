@@ -10,13 +10,10 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.provider.OpenableColumns
 import android.provider.Settings
-import android.webkit.WebView
-import android.webkit.WebViewClient
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.net.toUri
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -58,6 +55,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -78,7 +76,6 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
@@ -157,51 +154,44 @@ fun ProductShell(
     onLanguageChanged: () -> Unit = {},
 ) {
     var selectedTab by rememberSaveable { mutableStateOf(BuchouTab.Home) }
-    var showAbout by rememberSaveable { mutableStateOf(false) }
     BuchouScaffold(selectedTab = selectedTab, onTabSelected = { selectedTab = it }) { padding ->
-        Box(Modifier.fillMaxSize()) {
-            when (selectedTab) {
-                BuchouTab.Home -> ProductHomeScreen(
-                    data = data,
-                    openSmokingOnStart = openSmokingOnStart,
-                    onSmokeFree = onSmokeFree,
-                    onSmoked = onSmoked,
-                    homeModuleConfigs = homeModuleConfigs,
-                    modifier = Modifier.padding(padding),
-                )
-                BuchouTab.Records -> ProductRecordsScreen(data, onInjectTestData, Modifier.padding(padding))
-                BuchouTab.Settings -> ProductSettingsScreen(
-                    settings = settings,
-                    onEnabledChange = onEnabledChange,
-                    onTimeChange = onTimeChange,
-                    onWeekdayToggle = onWeekdayToggle,
-                    onSoundChange = onSoundChange,
-                    data = data,
-                    onUpdateProfile = onUpdateProfile,
-                    onUpdateReasons = onUpdateReasons,
-                    onRestartJourney = onRestartJourney,
-                    onResetAllData = onResetAllData,
-                    homeModuleConfigs = homeModuleConfigs,
-                    onHomeModuleVisible = onHomeModuleVisible,
-                    onMoveHomeModule = onMoveHomeModule,
-                    appTheme = appTheme,
-                    onSetTheme = onSetTheme,
-                    currencyCode = currencyCode,
-                    onSetCurrency = onSetCurrency,
-                    language = language,
-                    onSetLanguage = onSetLanguage,
-                    syncState = syncState,
-                    onSaveWebDavConfig = onSaveWebDavConfig,
-                    onSyncUpload = onSyncUpload,
-                    onSyncDownload = onSyncDownload,
-                    onLanguageChanged = onLanguageChanged,
-                    onAboutClick = { showAbout = true },
-                    modifier = Modifier.padding(padding),
-                )
-            }
-            AnimatedVisibility(visible = showAbout, enter = fadeIn(), exit = fadeOut()) {
-                AboutScreen(onBack = { showAbout = false })
-            }
+        when (selectedTab) {
+            BuchouTab.Home -> ProductHomeScreen(
+                data = data,
+                openSmokingOnStart = openSmokingOnStart,
+                onSmokeFree = onSmokeFree,
+                onSmoked = onSmoked,
+                homeModuleConfigs = homeModuleConfigs,
+                modifier = Modifier.padding(padding),
+            )
+            BuchouTab.Records -> ProductRecordsScreen(data, onInjectTestData, Modifier.padding(padding))
+            BuchouTab.Settings -> ProductSettingsScreen(
+                settings = settings,
+                onEnabledChange = onEnabledChange,
+                onTimeChange = onTimeChange,
+                onWeekdayToggle = onWeekdayToggle,
+                onSoundChange = onSoundChange,
+                data = data,
+                onUpdateProfile = onUpdateProfile,
+                onUpdateReasons = onUpdateReasons,
+                onRestartJourney = onRestartJourney,
+                onResetAllData = onResetAllData,
+                homeModuleConfigs = homeModuleConfigs,
+                onHomeModuleVisible = onHomeModuleVisible,
+                onMoveHomeModule = onMoveHomeModule,
+                appTheme = appTheme,
+                onSetTheme = onSetTheme,
+                currencyCode = currencyCode,
+                onSetCurrency = onSetCurrency,
+                language = language,
+                onSetLanguage = onSetLanguage,
+                syncState = syncState,
+                onSaveWebDavConfig = onSaveWebDavConfig,
+                onSyncUpload = onSyncUpload,
+                onSyncDownload = onSyncDownload,
+                onLanguageChanged = onLanguageChanged,
+                modifier = Modifier.padding(padding),
+            )
         }
     }
 }
@@ -978,7 +968,6 @@ private fun ProductSettingsScreen(
     onSyncUpload: () -> Unit,
     onSyncDownload: () -> Unit,
     onLanguageChanged: () -> Unit = {},
-    onAboutClick: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -1131,7 +1120,10 @@ private fun ProductSettingsScreen(
                 stringResource(R.string.setting_about),
                 stringResource(R.string.about_version, "0.3.0-alpha10"),
                 trailing = { Text("›", color = MaterialTheme.colorScheme.onSurfaceVariant) },
-                onClick = onAboutClick,
+                onClick = {
+                    val intent = Intent(Intent.ACTION_VIEW, ABOUT_URL.toUri()).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    ctx.startActivity(intent)
+                },
                 showDivider = false,
             )
         }
@@ -1209,51 +1201,6 @@ private fun ProductSettingsScreen(
 private enum class SettingsDialog { Profile, Restart, DeleteAll, Weekdays, Appearance, Reasons, Currency, Language, Sync }
 
 private const val ABOUT_URL = "https://raw.githubusercontent.com/minorsnownight/buchou/refs/heads/main/ABOUT.md"
-
-@Composable
-private fun AboutScreen(onBack: () -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .windowInsetsPadding(WindowInsets.statusBars),
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp)
-                .padding(horizontal = BuchouSpacing.sm),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clickable { onBack() },
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = "‹",
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.onBackground,
-                )
-            }
-            Text(
-                text = stringResource(R.string.setting_about),
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onBackground,
-            )
-        }
-        AndroidView(
-            factory = { ctx ->
-                WebView(ctx).apply {
-                    webViewClient = WebViewClient()
-                    loadUrl(ABOUT_URL)
-                }
-            },
-            modifier = Modifier.fillMaxSize(),
-        )
-    }
-}
 
 @Composable
 private fun ReasonsDialog(
